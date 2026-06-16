@@ -1,0 +1,88 @@
+# OpenSearch + Dashboards + Ollama — 오픈소스 AI-SIEM 실습 스택
+# 상용 Elastic(Platinum/Enterprise) AI 대체: 무료·로컬·Docker
+# ⚠️ 보안 플러그인 비활성(실습 전용). 운영 환경 금지.
+name: opensearch-ai-siem
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.19.0}
+    container_name: opensearch
+    environment:
+      - cluster.name=ai-siem
+      - node.name=opensearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS:--Xms1g -Xmx1g}"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"   # 데모 인증서 생성 생략
+      - "DISABLE_SECURITY_PLUGIN=true"        # 실습 전용: TLS/인증 끔
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"   # REST API
+      - "9600:9600"   # Performance Analyzer
+    networks: [ai-siem]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION:-2.19.0}
+    container_name: opensearch-dashboards
+    environment:
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
+    volumes:
+      # assistant.chat.enabled 등은 yml로만 설정 가능 → 마운트
+      - ./config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+    ports:
+      - "5601:5601"   # Dashboards UI
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks: [ai-siem]
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"   # Ollama API (OpenAI 호환: /v1/chat/completions)
+    networks: [ai-siem]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    # GPU 사용 시 주석 해제 (NVIDIA + nvidia-container-toolkit 필요)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - { driver: nvidia, count: all, capabilities: [gpu] }
+
+  # 테스트·보안 도구 컨테이너 — OS 무관 실행: docker compose exec tools <명령>
+  # curl·jq·python3·nmap·dig 등 포함(nicolaka/netshoot). 랩 디렉터리를 /lab 로 마운트.
+  # 컨테이너 안에서는 서비스명으로 접근: http://opensearch:9200 / http://ollama:11434
+  tools:
+    image: nicolaka/netshoot:latest
+    container_name: ai-siem-tools
+    command: ["sleep", "infinity"]
+    working_dir: /lab
+    volumes:
+      - ./:/lab
+    networks: [ai-siem]
+    depends_on: [opensearch, ollama]
+
+volumes:
+  opensearch-data:
+  ollama-data:
+
+networks:
+  ai-siem:
+    driver: bridge

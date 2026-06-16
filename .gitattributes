@@ -1,0 +1,6 @@
+# 복붙 셸 명령이 CRLF 로 깨지지 않도록 텍스트는 LF 로 고정
+* text=auto eol=lf
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.zip  binary
