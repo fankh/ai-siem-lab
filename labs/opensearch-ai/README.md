@@ -7,7 +7,7 @@
 | Kibana (유료 티어) | OpenSearch Dashboards |
 | Elastic ML 이상 탐지 (Platinum) | OpenSearch Anomaly Detection (RCF) |
 | Elastic AI Assistant (Enterprise + LLM 커넥터) | Dashboards Assistant + ml-commons + **Ollama** |
-| 유료 LLM API 커넥터 | 로컬 **Ollama** (Llama 3.1 등) |
+| 유료 LLM API 커넥터 | 로컬 **Ollama** (qwen2.5:3b 등) |
 
 > ⚠️ **실습 전용**: 보안 플러그인(TLS/인증)을 끈 구성입니다. 운영 환경에 사용하지 마세요.
 
@@ -107,8 +107,8 @@ docker compose down -v       # 볼륨까지 삭제 (모델·인덱스 초기화)
   OpenSearch는 docker 네트워크의 `ollama:11434`(컨테이너)로 접속하므로 호스트 포트 충돌과 무관.
 - **커넥터 credential 오류**: ml-commons는 무인증이어도 `credential` 필드를 요구 → setup.sh에 더미 키 포함됨.
 
-> ✅ 이 스택은 2026-06-15 본 머신(Docker Desktop 4.77, OpenSearch 2.19.0, qwen2.5:0.5b)에서
-> connector→model→deploy→추론까지 정상 동작 검증됨.
+> ✅ 이 스택은 2026-06-16 본 머신(Docker Desktop 4.77, OpenSearch 2.19.0, qwen2.5:3b)에서
+> connector→model→deploy→추론(few-shot 트리아지)까지 정상 동작 검증됨.
 
 ## 참고
 - OpenSearch Assistant Toolkit · ml-commons(agents/tools) · Anomaly Detection 공식 문서
