@@ -6,7 +6,7 @@ set -euo pipefail
 
 OS_URL="${OS_URL:-http://localhost:9200}"
 OLLAMA_HOST_URL="${OLLAMA_HOST_URL:-http://localhost:11434}"
-OLLAMA_MODEL="${OLLAMA_MODEL:-llama3.1:8b}"
+OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:3b}"   # 저사양 표준. .env 에서 변경 가능(초저사양 qwen2.5:1.5b)
 TMP="$(mktemp -d)"
 
 echo "[1/6] OpenSearch 대기..."

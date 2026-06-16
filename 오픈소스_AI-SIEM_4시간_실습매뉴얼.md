@@ -23,8 +23,8 @@ docker compose ps               # 3개 컨테이너 healthy 확인
 
 ### 0-2. Ollama 모델 + ml-commons 연결
 ```bash
-# 실습용 경량 모델 (품질은 8b 권장, 저사양은 3b)
-docker exec ollama ollama pull llama3.2:3b
+# 저사양 표준 모델(한국어·분류 양호, 본 매뉴얼 검증). 초저사양 qwen2.5:1.5b · 고사양 llama3.1:8b
+docker exec ollama ollama pull qwen2.5:3b
 ./setup.sh                       # 커넥터→모델→배포→추론 테스트 (git-bash/WSL, curl·jq 필요)
 ```
 > Windows 네이티브 Ollama가 :11434를 점유 중이면, 모델은 `docker exec ollama ollama pull` 로
@@ -130,7 +130,7 @@ PUT _cluster/settings
 POST _plugins/_ml/connectors/_create
 { "name":"Ollama Chat","version":"1","protocol":"http",
   "credential": { "key":"ollama-no-auth" },          ← 무인증이어도 필수
-  "parameters": { "endpoint":"ollama:11434", "model":"llama3.2:3b" },
+  "parameters": { "endpoint":"ollama:11434", "model":"qwen2.5:3b" },
   "actions": [{ "action_type":"predict","method":"POST",
     "url":"http://${parameters.endpoint}/v1/chat/completions",
     "request_body":"{\"model\":\"${parameters.model}\",\"messages\":${parameters.messages}}" }] }
@@ -147,22 +147,27 @@ POST _plugins/_ml/models/<MODEL_ID>/_deploy        → model_state: DEPLOYED
 GET _plugins/_ml/models/_search
 { "query": { "term": { "model_state": "DEPLOYED" } }, "_source": ["name","model_state"] }
 ```
-> ⚠️ 0.5b 같은 초소형 모델은 트리아지 품질이 낮습니다. 실습은 **llama3.2:3b 이상**을 사용하세요.
+> ⚠️ 0.5b 같은 초소형은 품질이 낮습니다. 실습 표준은 **qwen2.5:3b**(초저사양 `qwen2.5:1.5b`).
+> `llama3.2:3b` 는 같은 크기여도 한국어 출력이 불안정(외국어 토큰 혼입)하여 비권장.
 
 ### 3-3. 경보 트리아지 (검증된 결과)
 블록 2에서 찾은 공격 IP를 LLM에 넘겨 분류·요약합니다.
+**소형 모델은 ① 예시 2개(few-shot) ② 짧은 출력(3줄) ③ temperature=0** 으로 두면 입력 표현(마침표 등)이 달라도 안정적입니다.
 ```
 POST _plugins/_ml/models/<MODEL_ID>/_predict
 { "parameters": { "messages": [
-  {"role":"system","content":"너는 SOC 분석가다. 한국어로 간결히 트리아지: 1)공격유형 2)심각도 3)근거 4)권고조치"},
-  {"role":"user","content":"source.ip 10.13.37.7 이 12분간 /login POST 120건, 대부분 401, UA=python-requests/2.31. 정상 IP 평균은 10건 미만."} ] } }
+  {"role":"system","content":"너는 SOC 분석가다. 한국어 3줄로 — 1)공격유형 2)심각도(상/중/하) 3)권고. 공격유형은 [브루트포스,SQLi,XSS,스캐닝,정상] 중 하나. 신호: /login 401 다수=브루트포스, UNION SELECT나 UA=sqlmap=SQLi, <script>=XSS, 경로 404 다수=스캐닝."},
+  {"role":"user","content":"5.5.5.5 가 2분간 /login 에 POST 200건, 대부분 401, UA=hydra."},
+  {"role":"assistant","content":"공격유형: 브루트포스\n심각도: 상\n권고: 해당 IP 차단 + 로그인 rate limit."},
+  {"role":"user","content":"7.7.7.7 가 /search?q=<script>alert(1)</script> 요청."},
+  {"role":"assistant","content":"공격유형: XSS\n심각도: 중\n권고: 입력 검증·출력 인코딩."},
+  {"role":"user","content":"source.ip 10.13.37.7 이 12분간 /login 에 POST 120건, 대부분 401, UA=python-requests/2.31"} ] } }
 ```
-**실제 LLM 응답 (llama3.2:3b)**:
+**실제 LLM 응답 (qwen2.5:3b, temperature=0)**:
 ```
-1) 공격유형: 브루트포스(Brute Force) 로그인 공격
-2) 심각도: 상(High)
-3) 근거: 10.13.37.7 이 12분간 /login POST 120건, 대부분 401, UA=python-requests/2.31
-4) 권고조치: 로그인 rate limit 적용, 해당 IP 차단, 로그인 시도 모니터링 강화
+공격유형: 브루트포스
+심각도: 상
+권고: 해당 IP 차단 + 로그인 rate limit
 ```
 
 > **한글 인코딩 주의**: curl은 UTF-8 본문을 파일(`-d @body.json`)로 보내면 안전합니다.
@@ -209,16 +214,19 @@ docker compose -f labs/opensearch-ai/docker-compose.yml down -v   # 볼륨까지
 | 커넥터 `version is null` | `"version":"1"` 누락 |
 | `untrusted endpoint` | `trusted_connector_endpoints_regex` 미적용 |
 | LLM 한글 깨짐 | 본문을 UTF-8로 전송 (curl `-d @file` 또는 PS UTF-8 bytes) |
-| 트리아지 품질 낮음 | 모델 키우기: `llama3.2:3b` → `llama3.1:8b` |
+| 트리아지 품질 낮음 | ① 프롬프트에 판단 기준 명시 ② 출력 3줄 ③ temperature=0; 그래도 부족하면 `qwen2.5:3b`→`qwen2.5:7b` |
 
 ### 모델 선택 가이드
 | 모델 | 크기 | 용도 |
 |------|------|------|
-| qwen2.5:0.5b | 0.4GB | 배선 점검용(품질 낮음) |
-| **llama3.2:3b** | 2GB | 실습 표준(본 매뉴얼 검증) |
-| llama3.1:8b | 5GB | 운영 품질 권장 |
+| qwen2.5:1.5b | ~1GB | 초저사양 — 한국어·분류 양호(검증) |
+| **qwen2.5:3b** | ~2GB | **실습 표준 — 권장**(본 매뉴얼 검증) |
+| qwen2.5:7b / llama3.1:8b | ~5GB | 고사양·운영 품질 |
+| qwen2.5:0.5b | ~0.4GB | 배선 점검용(품질 낮음) |
+| ~~llama3.2:3b~~ | 2GB | 비권장 — 한국어 출력 불안정(토큰 혼입) |
 
 ---
 
-**검증 환경**: Docker Desktop 4.77, OpenSearch/Dashboards 2.19.0, Ollama 0.30.7, llama3.2:3b
-(2026-06-15 본 머신 실측 — 데이터 적재 716건, 브루트포스/SQLi 탐지, 이상탐지 Detector 생성, LLM 트리아지 정상)
+**검증 환경**: Docker Desktop 4.77, OpenSearch/Dashboards 2.19.0, Ollama, qwen2.5:3b
+(2026-06-16 본 머신 실측 — 데이터 716건, 브루트포스/SQLi 탐지, 이상탐지 Detector, LLM 트리아지 정상.
+소형 모델 비교: qwen2.5:3b/1.5b 는 힌트 프롬프트+temperature=0 에서 브루트포스·SQLi·정상 분류 정확, llama3.2:3b 는 한국어 불안정)

@@ -13,7 +13,7 @@
 
 ## 요구 사항
 - Docker Desktop / Docker Engine + Compose v2
-- **RAM 8GB+** (OpenSearch ~2GB + Ollama 모델 8B ~6GB). 저사양은 `.env`에서 `OLLAMA_MODEL=llama3.2:3b`
+- **RAM**: 기본 모델 `qwen2.5:3b`(~2GB) 기준 **8GB 권장**. 초저사양은 `.env`에서 `OLLAMA_MODEL=qwen2.5:1.5b`(~1GB), 고사양은 `qwen2.5:7b`/`llama3.1:8b`. (⚠️ `llama3.2:3b`는 한국어 출력 불안정으로 비권장)
 - 리눅스 호스트: `sudo sysctl -w vm.max_map_count=262144` (Docker Desktop/WSL2는 보통 불필요)
 - `setup.sh` 실행용: bash·curl·jq·sed (Windows는 **git-bash** 또는 **WSL**)
 
