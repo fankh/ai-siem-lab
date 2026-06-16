@@ -6,20 +6,21 @@
 |------|------|
 | 수집·저장·시각화 | OpenSearch + OpenSearch Dashboards |
 | 이상 탐지 | OpenSearch Anomaly Detection (RCF, 무료 내장) |
-| LLM 경보 분석 | ml-commons + 로컬 **Ollama** (Llama 3.x) |
+| LLM 경보 분석 | ml-commons + 로컬 **Ollama** (`qwen2.5:3b`) |
 
 > ⚠️ **실습 전용**: 보안 플러그인(TLS/인증)을 끈 구성입니다. 운영 환경에 사용하지 마세요.
 
 ## 요구 사항
 - Docker Desktop / Docker Engine + Compose v2, **RAM 8GB+**
 - `setup.sh` 실행용 bash·curl·jq (Windows 는 git-bash 또는 WSL)
+- 모델: 기본 **`qwen2.5:3b`**(~2GB), 초저사양 `qwen2.5:1.5b`(~1GB), 고사양 `qwen2.5:7b`/`llama3.1:8b`. (⚠️ `llama3.2:3b`는 한국어 출력 불안정으로 비권장)
 
 ## 빠른 시작
 ```bash
 git clone https://github.com/fankh/ai-siem-lab.git
 cd ai-siem-lab/labs/opensearch-ai
 docker compose up -d        # OpenSearch · Dashboards · Ollama · tools
-docker exec ollama ollama pull llama3.2:3b
+docker exec ollama ollama pull qwen2.5:3b
 ./setup.sh                  # 커넥터→모델→배포→추론 테스트
 docker compose exec tools python3 sample-data/load_sample_logs.py http://opensearch:9200
 ```
