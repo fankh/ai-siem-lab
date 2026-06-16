@@ -73,11 +73,13 @@ echo "      model_id=$MODEL_ID  state=$STATE"
 echo "[6/6] 추론 테스트 (few-shot 트리아지 — 소형 모델도 정확/안정. 커넥터가 temperature=0 적용)"
 curl -s -XPOST "$OS_URL/_plugins/_ml/models/$MODEL_ID/_predict" -H 'Content-Type: application/json' -d '{
   "parameters": { "messages": [
-    {"role":"system","content":"너는 SOC 분석가다. 한국어 3줄로 답하라 — 1)공격유형 2)심각도(상/중/하) 3)권고. 공격유형은 [브루트포스,SQLi,XSS,스캐닝,정상] 중 하나. 신호: /login 401 다수=브루트포스, UNION SELECT나 UA=sqlmap=SQLi, <script>=XSS, 경로 404 다수=스캐닝."},
+    {"role":"system","content":"너는 SOC 분석가다. 한국어 3줄로 답하라 — 1)공격유형 2)심각도(상/중/하) 3)권고. 공격유형은 [브루트포스,SQLi,XSS,스캐닝,정상] 중 하나. 신호: /login 401 다수=브루트포스, UNION SELECT나 UA=sqlmap=SQLi, <script>=XSS, 경로 404 다수=스캐닝, 2xx 정상응답만=정상."},
     {"role":"user","content":"5.5.5.5 가 2분간 /login 에 POST 200건, 대부분 401, UA=hydra."},
     {"role":"assistant","content":"공격유형: 브루트포스\n심각도: 상\n권고: 해당 IP 차단 + 로그인 rate limit."},
     {"role":"user","content":"7.7.7.7 가 /search?q=<script>alert(1)</script> 요청."},
     {"role":"assistant","content":"공격유형: XSS\n심각도: 중\n권고: 입력 검증·출력 인코딩."},
+    {"role":"user","content":"192.168.10.5 가 /index.html, /a.css GET 12건 모두 200."},
+    {"role":"assistant","content":"공격유형: 정상\n심각도: 하\n권고: 조치 불필요."},
     {"role":"user","content":"10.13.37.7 이 1분간 /login 에 401 을 50회 발생, UA=python-requests."}
   ]}
 }' | jq -r '.inference_results[0].output[0].dataAsMap.choices[0].message.content // .'
