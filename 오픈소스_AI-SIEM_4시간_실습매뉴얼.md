@@ -182,19 +182,19 @@ POST _plugins/_ml/models/<MODEL_ID>/_predict
 
 ## 블록 4 — 종합 시나리오 (실습 25분)
 
-**시나리오**: 외부 IP 웹 공격 탐지 → 분석 → 보고서 초안 자동 생성
+**시나리오**: 외부 IP 웹 공격 탐지 → 분석 → 보고서 초안 자동 생성. **탐지**(블록 2 쿼리로 `10.13.37.7`/`45.155.205.99` 식별) → 상세 조사 → LLM 요약 → 관제 보고서 순.
 
-1. **탐지**: 블록 2 쿼리로 공격 IP 식별 (10.13.37.7 / 45.155.205.99)
-2. **상세 조사**: 해당 IP의 로그 추출
-   ```
-   POST security-web/_search
-   { "query": { "term": { "source.ip": "45.155.205.99" } },
-     "_source": ["@timestamp","url.path","url.query","http.response.status_code"] }
-   ```
-3. **LLM 분석/요약**: 추출한 로그를 `_predict` 의 user content에 넣어 공격 유형·영향·대응 요약
-4. **관제 보고서 초안**: 프롬프트를 "관제 보고서 형식(개요/탐지/분석/영향/대응/권고)으로 작성"으로 변경 → 초안 생성
-5. **(선택) Dashboards Assistant**: root agent 등록 후 우상단 챗에서 대화형 분석
-   (절차: `labs/opensearch-ai/README.md` "Assistant 챗 연결")
+### 4-1. 상세 조사 — 공격 IP 로그 추출 (Dev Tools)
+```
+POST security-web/_search
+{ "query": { "term": { "source.ip": "45.155.205.99" } },
+  "_source": ["@timestamp","url.path","url.query","http.response.status_code"] }
+```
+
+### 4-2. LLM 분석 → 관제 보고서 초안
+- 추출한 로그를 `_predict` 의 user content 에 넣어 공격 유형·영향·대응 요약
+- 프롬프트를 "관제 보고서 형식(개요/탐지/분석/영향/대응/권고)으로 작성"으로 바꿔 **보고서 초안** 생성
+- (선택) Dashboards Assistant: root agent 등록 후 우상단 챗에서 대화형 분석 (절차: `labs/opensearch-ai/README.md` "Assistant 챗 연결")
 
 ✅ 최종 산출물: 공격 IP 식별 → LLM 분석 → **관제 보고서 초안** (관제 보고서 양식에 정리)
 
